@@ -1,0 +1,237 @@
+<html>
+
+<head>
+    <style>
+        table,
+        tr,
+        th,
+        td {
+            border: 1px solid black;
+        }
+
+        tr:hover {
+            background: lightgray;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="text" id="PatientID" />
+    <button onclick="getImagingStudyList()">Get Imaging Study List</button>
+    <button onclick="getPatientList()">Get Patient List</button>
+    <table id="tablelist">
+        <tr>
+            <th>NO.</th>
+            <th>Imaging Study ID</th>
+            <th>Patient ID</th>
+        </tr>
+
+    </table>
+    <img id="imageJpg" width="500" height="600">
+    <script>
+        var getJSON = function (url, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.responseType = 'json';
+
+            xhr.onload = function () {
+                var status = xhr.status;
+                if (status == 200) {
+                    callback(null, xhr.response);
+                } else {
+                    callback(status);
+                }
+            };
+            xhr.send();
+        };
+
+        function clearTable(name) {
+            var table = document.getElementById("tablelist");
+            table.innerHTML = '<tr><th> NO.</th><th>' + name + '</th><th>Patient ID</th></tr>';
+
+        }
+        function getPatientList() {
+            clearTable("Patient UID");
+            getJSON('https://orthanc.dicom.tw/patients/', function (err, data) { //https://mtss.dicom.tw/api/fhir/ImagingStudy/
+                if (err != null) {
+                    console.error(err);
+                } else {
+                    var table = document.getElementById("tablelist");
+
+                    for (var i = 0; i < data.length; i++) {
+                        getJSON('https://orthanc.dicom.tw/patients/' + data[i], function (err2, data2) { //https://mtss.dicom.tw/api/fhir/ImagingStudy/
+                            if (err2 != null) {
+                                console.error(err2);
+                            } else {
+                                var row = table.insertRow(-1);
+                                var cell1 = row.insertCell(0);
+                                var cell2 = row.insertCell(1);
+                                var cell3 = row.insertCell(2);
+
+                                var rows = table.getElementsByTagName("tr");
+                                cell1.innerHTML = rows.length - 1;
+                                cell2.innerHTML = data[rows.length - 2];
+                                cell3.innerHTML = data2.MainDicomTags.PatientID;
+                            }
+                        });
+
+                    }
+
+                }
+            });
+        }
+        function getImagingStudyList() {
+            clearTable("Study ID");
+
+            getJSON('https://orthanc.dicom.tw/patients/', function (err, data) { //https://mtss.dicom.tw/api/fhir/ImagingStudy/
+                if (err != null) {
+                    console.error(err);
+                } else {
+                    var table = document.getElementById("tablelist");
+
+                    for (var i = 0; i < data.length; i++) {
+                        getJSON('https://orthanc.dicom.tw/patients/' + data[i], function (err2, data2) { //https://mtss.dicom.tw/api/fhir/ImagingStudy/
+                            if (err2 != null) {
+                                console.error(err2);
+                            } else {
+                                var pID = document.getElementById("PatientID").value;
+                                if (data2.MainDicomTags.PatientID == pID) {
+                                    for (var j = 0; j < data2.Studies.length; j++) {
+                                        var row = table.insertRow(-1);
+                                        var cell1 = row.insertCell(0);
+                                        var cell2 = row.insertCell(1);
+                                        var cell3 = row.insertCell(2);
+                                        var createClickHandler = function (row) {
+                                            return function () {
+                                                var cell = row.getElementsByTagName("td")[1];
+                                                var id = cell.innerHTML;
+                                                getSeries(id);
+                                            };
+                                        };
+
+                                        row.onclick = createClickHandler(row);
+                                        var rows = table.getElementsByTagName("tr");
+                                        cell1.innerHTML = rows.length - 1;
+                                        cell2.innerHTML = data2.Studies[j];
+                                        cell3.innerHTML = data2.MainDicomTags.PatientID;
+                                    }
+                                }
+                            }
+                        });
+
+                    }
+
+                }
+            });
+        }
+
+        function getSeries(studyID) {
+            clearTable("Series UID");
+            var url = 'https://orthanc.dicom.tw/studies/' + studyID;//https://mtss.dicom.tw/api/fhir/ImagingStudy/
+            getJSON(url, function (err, data) {
+                if (err != null) {
+                    console.error(err);
+                } else {
+
+                    var table = document.getElementById("tablelist");
+
+                    for (var i = 0; i < data.Series.length; i++) {
+                        var row = table.insertRow(-1);
+                        var cell1 = row.insertCell(0);
+                        var cell2 = row.insertCell(1);
+                        var createClickHandler = function (row) {
+                            return function () {
+                                var cell = row.getElementsByTagName("td")[1];
+                                var id = cell.innerHTML;
+                                getInstances(id);
+                            };
+                        };
+
+                        row.onclick = createClickHandler(row);
+
+                        cell1.innerHTML = i + 1;
+                        cell2.innerHTML = data.Series[i];
+                    }
+
+                }
+            });
+        }
+
+        function getInstances(seriesID) {
+            clearTable("Instance UID");
+            var url = 'https://orthanc.dicom.tw/series/' + seriesID;
+            getJSON(url, function (err, data) {
+                if (err != null) {
+                    console.error(err);
+                } else {
+
+                    var table = document.getElementById("tablelist");
+
+
+                    for (var j = 0; j < data.Instances.length; j++) {
+                        var row = table.insertRow(-1);
+                        var cell1 = row.insertCell(0);
+                        var cell2 = row.insertCell(1);
+                        var cell3 = row.insertCell(2);
+                        var cell4 = row.insertCell(3);
+
+                        var createClickHandler = function (row) {
+                            return function () {
+                                var cell = row.getElementsByTagName("td")[1];
+                                var id = cell.innerHTML;
+                                //getInstance(id);
+                            };
+                        };
+
+                        row.onclick = createClickHandler(row);
+
+                        cell1.innerHTML = j + 1;
+                        cell2.innerHTML = data.Instances[j];
+                        cell3.innerHTML = '<button onclick="downloadDicom(' + j + ')">Download DICOM</button>';
+                        cell4.innerHTML = '<button onclick="downloadJson(' + j + ')">Download JSON</button>';
+                    }
+
+
+                }
+            });
+        }
+        function downloadDicom(i) {
+            var table = document.getElementById("tablelist");
+            var instanceID = table.rows[i + 1].cells[1].innerHTML;
+            var url = 'https://orthanc.dicom.tw/instances/' + instanceID + '/preview';
+            window.open(url, '_blank');
+
+            // var url = 'https://orthanc.dicom.tw/instances/' + instanceID + '/files';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.responseType = 'image/dicom+jpeg';
+
+            xhr.onload = function () {
+                var status = xhr.status;
+                if (status == 200) {
+                    alert(xhr.response);
+                    var b64Response = btoa(unescape(encodeURIComponent(xhr.response)));
+                    //var outputImg = document.createElement('img');
+                    //outputImg.src = 'data:image/png;base64,' + b64Response;
+
+                    // append it to your page
+                    //document.body.appendChild(outputImg);
+                    document.getElementById("imageJpg").src = 'data:image/png;base64,' + b64Response;
+                } else {
+                    callback(status);
+                }
+            };
+            xhr.send();
+        }
+
+        function downloadJson(i) {
+            var table = document.getElementById("tablelist");
+            var instanceID = table.rows[i + 1].cells[1].innerHTML;
+            var url = 'https://orthanc.dicom.tw/instances/' + instanceID + '/tags';
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+
+</html>
